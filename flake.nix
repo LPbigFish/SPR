@@ -1,5 +1,5 @@
 {
-  description = "C++23 class mono-repo";
+  description = "C++26 SPR exercises with C++11 submission export";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -30,6 +30,7 @@
                 clang
                 lldb
                 gtest
+                python3
               ];
             };
       }

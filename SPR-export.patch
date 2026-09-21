@@ -1,0 +1,313 @@
+diff -ruN '--exclude=build' '--exclude=submissions' '--exclude=__pycache__' baseline/.gitignore work/.gitignore
+--- baseline/.gitignore	2026-09-21 19:55:04.701223291 +0200
++++ work/.gitignore	2026-09-21 19:47:55.493124748 +0200
+@@ -1,3 +1,4 @@
+ /build/
+ .direnv/
+ result
++submissions/
+diff -ruN '--exclude=build' '--exclude=submissions' '--exclude=__pycache__' baseline/CMakeLists.txt work/CMakeLists.txt
+--- baseline/CMakeLists.txt	2026-09-21 19:55:03.293248991 +0200
++++ work/CMakeLists.txt	2026-09-21 19:50:30.034300212 +0200
+@@ -1,54 +1,68 @@
+ cmake_minimum_required(VERSION 3.25)
+ 
+-project(CppClass VERSION 0.1.0 LANGUAGES CXX)
++project(SPR LANGUAGES CXX)
+ 
+-set(CMAKE_CXX_STANDARD 23)
++set(CMAKE_CXX_STANDARD 26)
+ set(CMAKE_CXX_STANDARD_REQUIRED ON)
+ set(CMAKE_CXX_EXTENSIONS OFF)
+ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+ 
+ include(CTest)
+-include(cmake/ProjectOptions.cmake)
++find_package(Python3 REQUIRED COMPONENTS Interpreter)
+ if(BUILD_TESTING)
+   find_package(GTest CONFIG REQUIRED)
+   include(GoogleTest)
+ endif()
+ 
+-# cpp_add_target(foo):
+-#   foo/include            headers (optional)
+-#   foo/src/*.cpp          static lib; src/main.cpp → "foo" exe linking it.
+-#                          no src/ → header-only INTERFACE lib.
+-#                          ponytail: main.cpp-only targets unsupported, keep main thin.
+-#   foo/tests/*.cpp        "foo_tests" gtest exe, links the lib.
+-function(cpp_add_target name)
+-  file(GLOB_RECURSE src CONFIGURE_DEPENDS
+-    "${name}/src/*.cpp" "${name}/src/*.cc" "${name}/src/*.cxx")
+-  file(GLOB_RECURSE tst CONFIGURE_DEPENDS
+-    "${name}/tests/*.cpp" "${name}/tests/*.cc" "${name}/tests/*.cxx")
+-
+-  if(src)
+-    list(FILTER src EXCLUDE REGEX "/main\\.cpp$")
+-    add_library(${name}_lib STATIC ${src})
+-    target_include_directories(${name}_lib PUBLIC "${name}/include")
+-    cpp_target_options(${name}_lib)
+-  else()
+-    add_library(${name}_lib INTERFACE)
+-    target_include_directories(${name}_lib INTERFACE "${name}/include")
+-  endif()
++add_library(spr INTERFACE)
++target_include_directories(spr INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
++
++add_custom_target(export)
++
++function(spr_add_problem name)
++  set(header "${CMAKE_CURRENT_SOURCE_DIR}/include/spr/${name}.hpp")
++  set(test_source "${CMAKE_CURRENT_SOURCE_DIR}/tests/${name}.cpp")
++  set(submission "${CMAKE_BINARY_DIR}/submissions/${name}.cpp")
++  file(GLOB_RECURSE project_headers CONFIGURE_DEPENDS
++    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
++    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
+ 
+-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${name}/src/main.cpp")
+-    add_executable(${name} "${name}/src/main.cpp")
+-    target_link_libraries(${name} PRIVATE ${name}_lib)
+-    cpp_target_options(${name})
++  if(NOT EXISTS "${header}")
++    message(FATAL_ERROR "Missing solution header: ${header}")
+   endif()
+ 
+-  if(tst)
+-    add_executable(${name}_tests ${tst})
+-    target_link_libraries(${name}_tests PRIVATE ${name}_lib GTest::gtest_main)
+-    cpp_target_options(${name}_tests)
+-    gtest_discover_tests(${name}_tests TEST_PREFIX "${name}.")
++  if(BUILD_TESTING)
++    add_executable(${name}_test "${test_source}")
++    target_link_libraries(${name}_test PRIVATE spr GTest::gtest_main)
++    target_compile_options(${name}_test PRIVATE
++      -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wshadow -Werror)
++
++    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
++      target_compile_options(${name}_test PRIVATE
++        $<$<CONFIG:Debug>:-fsanitize=address,undefined;-fno-omit-frame-pointer>)
++      target_link_options(${name}_test PRIVATE
++        $<$<CONFIG:Debug>:-fsanitize=address,undefined>)
++    endif()
++
++    gtest_discover_tests(${name}_test TEST_PREFIX "${name}.")
+   endif()
++
++  add_custom_command(
++    OUTPUT "${submission}"
++    COMMAND "${Python3_EXECUTABLE}"
++      "${CMAKE_CURRENT_SOURCE_DIR}/scripts/export_submission.py"
++      --source "${header}"
++      --include-root "${CMAKE_CURRENT_SOURCE_DIR}/include"
++      --output "${submission}"
++      --namespace "spr::${name}"
++      --compiler "${CMAKE_CXX_COMPILER}"
++    DEPENDS ${project_headers} "${CMAKE_CURRENT_SOURCE_DIR}/scripts/export_submission.py"
++    COMMENT "Exporting and C++11-checking ${name}"
++    VERBATIM)
++
++  add_custom_target(${name}_export DEPENDS "${submission}")
++  add_dependencies(export ${name}_export)
+ endfunction()
+ 
+-# add exercises:
+-# cpp_add_target(smart_pointers)
++# Add one line per assignment, for example:
++# spr_add_problem(p100)
+diff -ruN '--exclude=build' '--exclude=submissions' '--exclude=__pycache__' baseline/README.md work/README.md
+--- baseline/README.md	1970-01-01 01:00:00.000000000 +0100
++++ work/README.md	2026-09-21 19:47:54.969134289 +0200
+@@ -0,0 +1,39 @@
++# SPR
++
++C++26 locally, with one C++11-compatible file exported for Online Judge.
++
++Each assignment lives in `include/spr/<problem>.hpp` and exposes:
++
++```cpp
++namespace spr::<problem> {
++void solve(std::istream& in, std::ostream& out);
++}
++```
++
++Its GoogleTest file is `tests/<problem>.cpp`. Register the assignment at the
++bottom of `CMakeLists.txt`:
++
++```cmake
++spr_add_problem(p100)
++```
++
++Build and test normally:
++
++```sh
++cmake --preset debug
++cmake --build --preset debug
++ctest --preset debug
++```
++
++Create a submission with either the per-problem or aggregate target:
++
++```sh
++cmake --build build/debug --target p100_export
++cmake --build build/debug --target export
++```
++
++The result is `build/debug/submissions/p100.cpp`. The exporter recursively
++inlines quoted headers below `include/`, removes `#pragma once`, adds a small
++`main()`, and syntax-checks the result as C++11. Standard-library includes stay
++unchanged. If the solution uses C++26-only syntax, export fails instead of
++silently changing the implementation.
+diff -ruN '--exclude=build' '--exclude=submissions' '--exclude=__pycache__' baseline/cmake/ProjectOptions.cmake work/cmake/ProjectOptions.cmake
+--- baseline/cmake/ProjectOptions.cmake	2026-09-21 19:55:04.161233149 +0200
++++ work/cmake/ProjectOptions.cmake	1970-01-01 01:00:00.000000000 +0100
+@@ -1,22 +0,0 @@
+-function(cpp_target_options target)
+-  target_compile_features(${target} PRIVATE cxx_std_23)
+-
+-  target_compile_options(${target} PRIVATE
+-    -Wall
+-    -Wextra
+-    -Wpedantic
+-    -Wconversion
+-    -Wsign-conversion
+-    -Wshadow
+-    -Werror
+-  )
+-
+-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+-    target_compile_options(${target} PRIVATE
+-      $<$<CONFIG:Debug>:-fsanitize=address,undefined;-fno-omit-frame-pointer>
+-    )
+-    target_link_options(${target} PRIVATE
+-      $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+-    )
+-  endif()
+-endfunction()
+diff -ruN '--exclude=build' '--exclude=submissions' '--exclude=__pycache__' baseline/flake.nix work/flake.nix
+--- baseline/flake.nix	2026-09-21 19:55:05.229213657 +0200
++++ work/flake.nix	2026-09-21 19:47:56.017115205 +0200
+@@ -1,5 +1,5 @@
+ {
+-  description = "C++23 class mono-repo";
++  description = "C++26 SPR exercises with C++11 submission export";
+ 
+   inputs = {
+     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+@@ -30,6 +30,7 @@
+                 clang
+                 lldb
+                 gtest
++                python3
+               ];
+             };
+       }
+diff -ruN '--exclude=build' '--exclude=submissions' '--exclude=__pycache__' baseline/scripts/export_submission.py work/scripts/export_submission.py
+--- baseline/scripts/export_submission.py	1970-01-01 01:00:00.000000000 +0100
++++ work/scripts/export_submission.py	2026-09-21 19:50:14.966577494 +0200
+@@ -0,0 +1,107 @@
++#!/usr/bin/env python3
++"""Flatten an SPR solution header into an Online Judge submission."""
++
++from __future__ import annotations
++
++import argparse
++import re
++import subprocess
++from pathlib import Path
++
++
++LOCAL_INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"\s*(?://.*)?$')
++NAMESPACE = re.compile(r"^[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*$")
++
++
++def is_beneath(path: Path, root: Path) -> bool:
++    try:
++        path.relative_to(root)
++        return True
++    except ValueError:
++        return False
++
++
++def flatten(source: Path, include_root: Path, seen: set[Path]) -> str:
++    source = source.resolve()
++    if source in seen:
++        return ""
++    if not is_beneath(source, include_root):
++        raise ValueError(f"project header is outside include root: {source}")
++
++    seen.add(source)
++    output: list[str] = []
++    for line_number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
++        if re.match(r"^\s*#\s*pragma\s+once\s*$", line):
++            continue
++
++        match = LOCAL_INCLUDE.match(line)
++        if not match:
++            output.append(line)
++            continue
++
++        include = match.group(1)
++        candidates = (source.parent / include, include_root / include)
++        dependency = next((path.resolve() for path in candidates if path.is_file()), None)
++        if dependency is None or not is_beneath(dependency, include_root):
++            raise ValueError(
++                f'{source}:{line_number}: cannot inline local include "{include}"'
++            )
++
++        inlined = flatten(dependency, include_root, seen)
++        if inlined:
++            output.extend((f"// begin {dependency.relative_to(include_root)}", inlined,
++                           f"// end {dependency.relative_to(include_root)}"))
++
++    return "\n".join(output)
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--source", type=Path, required=True)
++    parser.add_argument("--include-root", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--namespace", required=True)
++    parser.add_argument("--compiler")
++    args = parser.parse_args()
++
++    source = args.source.resolve()
++    include_root = args.include_root.resolve()
++    if not NAMESPACE.fullmatch(args.namespace):
++        parser.error(f"invalid C++ namespace: {args.namespace}")
++    if not source.is_file():
++        parser.error(f"solution header does not exist: {source}")
++    if not is_beneath(source, include_root):
++        parser.error(f"solution header is outside include root: {source}")
++
++    body = flatten(source, include_root, set())
++    submission = f"""// Generated from {source.relative_to(include_root)}. Do not edit.
++#include <iostream>
++
++{body}
++
++int main()
++{{
++    std::ios::sync_with_stdio(false);
++    std::cin.tie(nullptr);
++
++    {args.namespace}::solve(std::cin, std::cout);
++    return 0;
++}}
++"""
++
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    args.output.write_text(submission, encoding="utf-8")
++
++    try:
++        if args.compiler:
++            subprocess.run(
++                [args.compiler, "-std=c++11", "-fsyntax-only", str(args.output)],
++                check=True,
++            )
++    except Exception:
++        args.output.unlink(missing_ok=True)
++        raise
++
++
++if __name__ == "__main__":
++    main()

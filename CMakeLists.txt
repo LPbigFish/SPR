@@ -1,54 +1,68 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(CppClass VERSION 0.1.0 LANGUAGES CXX)
+project(SPR LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(CTest)
-include(cmake/ProjectOptions.cmake)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
 if(BUILD_TESTING)
   find_package(GTest CONFIG REQUIRED)
   include(GoogleTest)
 endif()
 
-# cpp_add_target(foo):
-#   foo/include            headers (optional)
-#   foo/src/*.cpp          static lib; src/main.cpp → "foo" exe linking it.
-#                          no src/ → header-only INTERFACE lib.
-#                          ponytail: main.cpp-only targets unsupported, keep main thin.
-#   foo/tests/*.cpp        "foo_tests" gtest exe, links the lib.
-function(cpp_add_target name)
-  file(GLOB_RECURSE src CONFIGURE_DEPENDS
-    "${name}/src/*.cpp" "${name}/src/*.cc" "${name}/src/*.cxx")
-  file(GLOB_RECURSE tst CONFIGURE_DEPENDS
-    "${name}/tests/*.cpp" "${name}/tests/*.cc" "${name}/tests/*.cxx")
+add_library(spr INTERFACE)
+target_include_directories(spr INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-  if(src)
-    list(FILTER src EXCLUDE REGEX "/main\\.cpp$")
-    add_library(${name}_lib STATIC ${src})
-    target_include_directories(${name}_lib PUBLIC "${name}/include")
-    cpp_target_options(${name}_lib)
-  else()
-    add_library(${name}_lib INTERFACE)
-    target_include_directories(${name}_lib INTERFACE "${name}/include")
+add_custom_target(export)
+
+function(spr_add_problem name)
+  set(header "${CMAKE_CURRENT_SOURCE_DIR}/include/spr/${name}.hpp")
+  set(test_source "${CMAKE_CURRENT_SOURCE_DIR}/tests/${name}.cpp")
+  set(submission "${CMAKE_BINARY_DIR}/submissions/${name}.cpp")
+  file(GLOB_RECURSE project_headers CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
+
+  if(NOT EXISTS "${header}")
+    message(FATAL_ERROR "Missing solution header: ${header}")
   endif()
 
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${name}/src/main.cpp")
-    add_executable(${name} "${name}/src/main.cpp")
-    target_link_libraries(${name} PRIVATE ${name}_lib)
-    cpp_target_options(${name})
+  if(BUILD_TESTING)
+    add_executable(${name}_test "${test_source}")
+    target_link_libraries(${name}_test PRIVATE spr GTest::gtest_main)
+    target_compile_options(${name}_test PRIVATE
+      -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wshadow -Werror)
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+      target_compile_options(${name}_test PRIVATE
+        $<$<CONFIG:Debug>:-fsanitize=address,undefined;-fno-omit-frame-pointer>)
+      target_link_options(${name}_test PRIVATE
+        $<$<CONFIG:Debug>:-fsanitize=address,undefined>)
+    endif()
+
+    gtest_discover_tests(${name}_test TEST_PREFIX "${name}.")
   endif()
 
-  if(tst)
-    add_executable(${name}_tests ${tst})
-    target_link_libraries(${name}_tests PRIVATE ${name}_lib GTest::gtest_main)
-    cpp_target_options(${name}_tests)
-    gtest_discover_tests(${name}_tests TEST_PREFIX "${name}.")
-  endif()
+  add_custom_command(
+    OUTPUT "${submission}"
+    COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/scripts/export_submission.py"
+      --source "${header}"
+      --include-root "${CMAKE_CURRENT_SOURCE_DIR}/include"
+      --output "${submission}"
+      --namespace "spr::${name}"
+      --compiler "${CMAKE_CXX_COMPILER}"
+    DEPENDS ${project_headers} "${CMAKE_CURRENT_SOURCE_DIR}/scripts/export_submission.py"
+    COMMENT "Exporting and C++11-checking ${name}"
+    VERBATIM)
+
+  add_custom_target(${name}_export DEPENDS "${submission}")
+  add_dependencies(export ${name}_export)
 endfunction()
 
-# add exercises:
-# cpp_add_target(smart_pointers)
+# Add one line per assignment, for example:
+# spr_add_problem(p100)
