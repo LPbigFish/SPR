@@ -2,10 +2,14 @@ cmake_minimum_required(VERSION 3.25)
 
 project(SPR LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# ponytail: nix fortify hardening injects -O2 when no -O is given, and defines
+# _FORTIFY_SOURCE even at -O0 (features.h then warns); force -O0 + silence it
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wno-#warnings")
 
 include(CTest)
 if(BUILD_TESTING)

@@ -24,6 +24,10 @@
               stdenv = pkgs.clangStdenv;
             }
             {
+              hardeningDisable = [
+                "fortify"
+                "fortify3"
+              ];
               packages = with pkgs; [
                 cmake
                 ninja
