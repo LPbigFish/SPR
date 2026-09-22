@@ -66,3 +66,4 @@ endfunction()
 
 # Add one line per assignment, for example:
 # spr_add_problem(p100)
+spr_add_problem(p10189)

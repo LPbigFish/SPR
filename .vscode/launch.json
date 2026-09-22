@@ -1,15 +1,15 @@
 // One configuration per runnable target; program matches build/debug/<target>.
-// Example target entry:
-// {
-//   "name": "Debug foo",
-//   "type": "lldb",
-//   "request": "launch",
-//   "program": "${workspaceFolder}/build/debug/foo",
-//   "cwd": "${workspaceFolder}",
-//   "args": [],
-//   "stopOnEntry": false
-// }
 {
   "version": "0.2.0",
-  "configurations": []
+  "configurations": [
+    {
+      "name": "Debug p10189_test",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/p10189_test",
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "stopOnEntry": false
+    }
+  ]
 }
