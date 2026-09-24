@@ -9,7 +9,7 @@
       "program": "${workspaceFolder}/build/debug/p10189_test",
       "cwd": "${workspaceFolder}",
       "args": [],
-      "stopOnEntry": false
+      "stopOnEntry": false,
     }
   ]
 }

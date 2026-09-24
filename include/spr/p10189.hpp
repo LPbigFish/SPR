@@ -1,5 +1,3 @@
-#include <algorithm>
-#include <array>
 #include <cstdint>
 #include <istream>
 #include <ostream>
@@ -22,25 +20,19 @@ inline void solve(std::istream& in, std::ostream& out) {
 
         std::vector<std::vector<int8_t>> rows(static_cast<size_t>(n));
 
-        for (std::vector<std::vector<int8_t>>::size_type i = 0; i < rows.size();
-             ++i) {
-            rows[i].reserve(static_cast<size_t>(m));
+        for (auto& i : rows) {
+            i.reserve(static_cast<size_t>(m));
             std::string row{};
             in >> row;
 
-            for (std::string::size_type j = 0; j < row.size(); ++j) {
-                rows[i].push_back(row[j]);
+            for (char j : row) {
+                i.push_back(j);
             }
         }
 
-        for (std::vector<std::vector<int8_t>>::const_iterator row
-             = rows.begin();
-             row != rows.end();
-             ++row) {
-            for (std::vector<int8_t>::const_iterator c = row->begin();
-                 c != row->end();
-                 ++c) {
-                out << static_cast<char>(*c) << '\n';
+        for (auto& row : rows) {
+            for (signed char& c : row) {
+                out << static_cast<char>(c) << '\n';
             }
         }
     }
