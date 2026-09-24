@@ -2,10 +2,10 @@
 #include <tuple>
 #include <vector>
 
-namespace spr {
-namespace p10189 {
-using Bomb = std::tuple<size_t, size_t>;
+using Bomb = std::tuple<std::size_t, std::size_t>;
 using Field = std::vector<std::vector<char>>;
+
+namespace {
 
 inline auto mine(Field& field, const Bomb& bomb) -> void {
     const auto x = std::get<0>(bomb);
@@ -16,8 +16,8 @@ inline auto mine(Field& field, const Bomb& bomb) -> void {
     const auto y0 = std::max<size_t>(0, y > 0 ? y - 1 : 0);
     const auto y1 = std::min(field.size(), y + 2);
 
-    for (size_t yy = y0; yy < y1; ++yy) {
-        for (size_t xx = x0; xx < x1; ++xx) {
+    for (std::size_t yy = y0; yy < y1; ++yy) {
+        for (std::size_t xx = x0; xx < x1; ++xx) {
             if (xx == x && yy == y) {
                 continue;
             }
@@ -31,9 +31,9 @@ inline auto mine(Field& field, const Bomb& bomb) -> void {
 inline auto solve(std::istream& in, std::ostream& out) -> void {
     // 1st line 2 nums 0 < n, m <= 100
     // 4 2 VALID
-    size_t n{};
-    size_t m{};
-    size_t field_n{};
+    std::size_t n{};
+    std::size_t m{};
+    std::size_t field_n{};
 
     while (in >> n >> m) {
         if (n == 0 && m == 0) {
@@ -48,12 +48,12 @@ inline auto solve(std::istream& in, std::ostream& out) -> void {
         Field field(n);
         std::vector<Bomb> bombs{};
 
-        for (size_t y = 0; y < n; ++y) {
+        for (std::size_t y = 0; y < n; ++y) {
             auto& row = field.at(y);
             std::string s_row{};
             in >> s_row;
 
-            for (size_t x = 0; x < m; ++x) {
+            for (std::size_t x = 0; x < m; ++x) {
                 char filed = s_row.at(x);
                 if (filed == '*') {
                     bombs.emplace_back(x, y);
@@ -65,7 +65,7 @@ inline auto solve(std::istream& in, std::ostream& out) -> void {
         }
 
         for (const Bomb& bomb : bombs) {
-            p10189::mine(field, bomb);
+            mine(field, bomb);
         }
 
         out << "Field #" << field_n << ":\n";
@@ -77,5 +77,10 @@ inline auto solve(std::istream& in, std::ostream& out) -> void {
         }
     }
 }
-} // namespace p10189
-} // namespace spr
+
+}; // namespace
+
+auto main() -> int {
+    solve(std::cin, std::cout);
+    return 0;
+}
