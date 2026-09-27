@@ -1,8 +1,7 @@
 #include <cstdint>
 #include <iostream>
 
-namespace spr {
-namespace p594 {
+namespace {
 inline auto solve(std::istream& in, std::ostream& out) -> void {
     int32_t number{};
 
@@ -14,12 +13,16 @@ inline auto solve(std::istream& in, std::ostream& out) -> void {
             | ((bits & 0x00FF0000) >> 8) | ((bits & 0xFF000000) >> 24);
 
         std::int64_t result{endian};
-        if (result >= (int64_t{0x1} << 31)) {
-            result -= (int64_t{0x1} << 32);
+        if (result >= (std::int64_t{1} << 31)) {
+            result -= (std::int64_t{1} << 32);
         }
 
         out << number << " converts to " << result << '\n';
     }
 }
-} // namespace p594
-} // namespace spr
+} // namespace
+
+auto main() -> int {
+    solve(std::cin, std::cout);
+    return 0;
+}

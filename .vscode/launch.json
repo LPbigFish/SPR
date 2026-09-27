@@ -11,6 +11,36 @@
       "args": [],
       "stopOnEntry": false,
       "preLaunchTask": "build (debug preset)"
+    },
+    {
+      "name": "Debug p594_test",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/p594_test",
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "stopOnEntry": false,
+      "preLaunchTask": "build (debug preset)"
+    },
+    {
+      "name": "Debug p10196_test",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/p10196_test",
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "stopOnEntry": false,
+      "preLaunchTask": "build (debug preset)"
+    },
+    {
+      "name": "Debug p110_test",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/p110_test",
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "stopOnEntry": false,
+      "preLaunchTask": "build (debug preset)"
     }
   ]
 }

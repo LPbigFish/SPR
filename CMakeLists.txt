@@ -7,8 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# ponytail: nix fortify hardening injects -O2 when no -O is given, and defines
-# _FORTIFY_SOURCE even at -O0 (features.h then warns); force -O0 + silence it
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wno-#warnings")
 
 include(CTest)
@@ -48,3 +46,7 @@ endfunction()
 # Add one line per assignment, for example:
 # spr_add_problem(p100)
 spr_add_problem(p10189)
+spr_add_problem(p594)
+spr_add_problem(p10196)
+spr_add_problem(p110)
+spr_add_problem(p177)+
