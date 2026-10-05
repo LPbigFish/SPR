@@ -86,7 +86,6 @@ inline auto generate(
     );
 }
 
-// Je to rekurze 💀
 inline auto solve(std::istream& in, std::ostream& out) -> void {
     size_t m{};
     if (!(in >> m)) {
